@@ -1,0 +1,9 @@
+block 48000: AUG11,2017
+
+txid:  opened database successfully
+Table created successfully
+b'9270\t480000\t1\t2\n'
+b'245479271\t480000\t1\t2\n'
+['245479272', '480000', '1', '2']
+请按任意键继续. . .
+

@@ -1,0 +1,6 @@
+*.sqlite
+*.dat
+*.exe
+*.tsv
+*.pyc
+result/age_distri*.txt
