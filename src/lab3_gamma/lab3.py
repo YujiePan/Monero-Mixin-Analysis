@@ -5,7 +5,7 @@
 # @Last Modified time: 2018-05-30 13:44:50
 
 
-import sqlite
+import sqlite3
 import os
 import math
 import sys
@@ -96,7 +96,7 @@ def simulate(thread_id, MIX, max_random,  SIMU_TIMES):
             _, real_mini_id = mini_tx_id(db_find_block, real_out, real_out_n)
             _, now_mini_id = mini_tx_id(db_find_block, now_tx, 0)
 
-            // fmt.Println("TH", thread_id, "Random Choose:", now_tx, "from", real_out, real_out_n, "mini_id", real_mini_id)
+            print("TH", thread_id, "Random Choose:", now_tx, "from", real_out, real_out_n, "mini_id", real_mini_id)
             row_prob[0] = 1
             selected_mini[0] = real_mini_id
 
@@ -123,7 +123,7 @@ def  is_in_array(arr , element  , start  , end ) :
 
 
 def find_index(arr , element  , largest  ) :
-    for i in range(largest, -1, -1) 
-        if arr[i] == element
+    for i in range(largest, -1, -1) :
+        if arr[i] == element:
             return i
     return -1
