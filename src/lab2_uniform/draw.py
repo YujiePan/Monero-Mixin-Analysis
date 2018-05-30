@@ -2,7 +2,7 @@
 # @Author: Yujie Pan
 # @Date:   2018-05-29 01:25:44
 # @Last Modified by:   Yujie Pan
-# @Last Modified time: 2018-05-29 02:12:38
+# @Last Modified time: 2018-05-30 10:22:38
 
 RESULT_FILE_NAME = "../../result/lab2-th{}-mix{}.txt"
 LOG_OUTPUT = "../../result/lab2-th..-mix..-summary.log"
@@ -30,7 +30,7 @@ def main():
                                                                ge[m],
                                                                total[m])
             print(result)
-            log.write(result+"\n")
+            log.write(result + "\n")
     print("See result in", LOG_OUTPUT)
 
 if __name__ == '__main__':
