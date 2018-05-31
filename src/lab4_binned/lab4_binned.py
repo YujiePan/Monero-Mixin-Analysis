@@ -91,11 +91,11 @@ def disp_progress(start_time, start_p, now_p, end_p, comment):
         pass
 
 
-def mapped_bin(mini_tx_id, bin_size):
-	res = list(range(-15 * 12, 0)) + list(range(1, 15 * 12))
+def mapped_bin(tx_time_stamp, bin_size):
+	res = list(range(-300, 0)) + list(range(1, 300))
 	random.shuffle(res)
 	res.append(0)
-	return [i + mini_tx_id for i in res[-bin_size:]]
+	return [i + tx_time_stamp for i in res[-bin_size:]]
 
 
 def add_candidate(L, bins, first_bin=False):
@@ -152,22 +152,22 @@ def simulate(thread_id,  bin_num, bin_size,  max_random,  SIMU_TIMES):
             #      real_time_ago)
             # row_prob[0] = 1
 
-            add_candidate(selected_mini,mapped_bin(real_mini_id, bin_size), True)
+            add_candidate(selected_mini,mapped_bin(real_age, bin_size), True)
 
             for j in range(bin_num-1):
-                age = 0
-                while age<2 or not sampled_mini:
+                sample_age = 0
+                while age < 2 or age in sampled_mini:
                     sampled_age = random.gammavariate(ALPHA, BETA)
                     # print("ready choose", time_ago)
-                    sampled_block = time_to_block(now_time-sampled_age)
-                    sampled_mini = minitxid_via_block(DB_TX_BL_PATH,sampled_block)
-                mapped = mapped_bin(sampled_mini, bin_size)
+                    #sampled_block = time_to_block(now_time-sampled_age)
+                    #sampled_mini = minitxid_via_block(DB_TX_BL_PATH,sampled_block)
+                mapped = mapped_bin(sampled_age, bin_size)
                 add_candidate(selected_mini, mapped, False)
             # print("\tTH", thread_id, "choose_time_ago:", selected_mini)
 
          	
-            guess_time = guess(selected_mini, real_time_ago, bin_num*bin_size)
-            guess_times[MIX + 1 - guess_time] += 1
+            guess_time = guess(selected_mini, now_time, real_time, bin_num*bin_size)
+            guess_times[bin_size*bin_num - guess_time] += 1
             # print("\tTH", thread_id, "final:", now_tx, "from", real_tx,
             #      real_nfrom, "guess time:", MIX + 1 - guess_time)
             k += 1
@@ -178,9 +178,16 @@ def simulate(thread_id,  bin_num, bin_size,  max_random,  SIMU_TIMES):
     return info
 
 
+def guess(all, now_time, real_time, length):
+    all_p = [ D.pdf(i) for i in all]
+    all_p.sort()
+    real_age_p =D.pdf(now_time-real_time)
+    return find_index(all, real_age_p, length-1)
+
+
 def find_index(arr, element, largest):
     for i in range(largest, -1, -1):
-        if arr[i] == element:
+        if abs(arr[i] - element)<1e-5:
             return i
     print("-1")
     return -1
