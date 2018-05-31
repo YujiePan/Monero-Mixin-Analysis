@@ -2,8 +2,7 @@
 # @Author: Yujie Pan
 # @Date:   2018-05-30 11:37:19
 # @Last Modified by:   Yujie Pan
-# @Last Modified time: 2018-05-31 02:44:01
-
+# @Last Modified time: 2018-05-31 05:04:01
 
 import sqlite3
 import os
@@ -28,15 +27,17 @@ D = gamma(ALPHA, scale=1 / BETA)
 
 def main():
     try:
-        th = int(sys.argv[1])
-        mix = int(sys.argv[2])
+    	th = int(sys.argv[1])
+        bin_num = int(sys.argv[2])
+        bin_size = int(sys.argv[3])
     except:
-        th = int(input("THREAD: "))
-        mix = int(input("MIXINS: "))
-    mix_size = mix
-    info = simulate(th, mix, SIZE_DB[th],  SIMU_TIMES)
+    	th = int(input("DB no.(1-4): "))
+        bin_num = int(input("bin num: "))
+        bin_size = int(input("bin size: "))
+    info = simulate(th, bin_num, bin_size, SIZE_DB[th],  SIMU_TIMES)
     write_log(
-        th, "../../result/lab3-th{}-mix{}.txt".format(th, mix_size), info)
+        th, "../../result/lab4-th{}-binnum{}-binsize{}.txt".format(
+        	th, bin_num, bin_size), info)
 
 
 def write_log(i, name, content):
@@ -67,6 +68,13 @@ def block_via_minitxid(cur, mini_id):
         return item[1]
 
 
+def minitxid_via_block(cur, block):
+    cur.execute(
+        "SELECT * FROM TXTOBLOCK WHERE BLOCK = {} LIMIT 1;".format(block))
+    for item in cur.fetchall():
+        return item[2] + random.randint(-15, 15)
+
+
 def get_time_stamp(block, mini_id):
     return random.randint(BLOCK_TIME[block - 1], BLOCK_TIME[block])
 
@@ -83,33 +91,51 @@ def disp_progress(start_time, start_p, now_p, end_p, comment):
         pass
 
 
-def simulate(thread_id, MIX, max_random,  SIMU_TIMES):
+def mapped_bin(mini_tx_id, bin_size):
+	res = list(range(-15 * 12, 0)) + list(range(1, 15 * 12))
+	random.shuffle(res)
+	res.append(0)
+	return [i + mini_tx_id for i in res[-bin_size:]]
+
+
+def add_candidate(L, bins, first_bin=False):
+	if first_bin:
+		L = bins
+		return
+    for i in bins:
+        if i not in L:
+            L.append(i)
+        else:
+        	i = i-1
+            while i in L:
+                i = i - 1
+            L.append(i)
+
+
+def simulate(thread_id,  bin_num, bin_size,  max_random,  SIMU_TIMES):
     t1 = time.time()  # get current time
 
     DB_TX_IN_OUT_PATH = "../../db/new_tx_in_out{}.sqlite".format(thread_id)
     DB_TX_BL_PATH = "../../db/new_tx_block.sqlite"
 
-    pool_size = int((MIX + 1) * 1.5 + 1)
-    pool_size = MIX
-    # to simplify
-
     cur_tx_in_out = sqlite3.connect(DB_TX_IN_OUT_PATH).cursor()
     cur_tx_block = sqlite3.connect(DB_TX_BL_PATH).cursor()
 
-    guess_times = [0 for i in range(MIX + 2)]
+    guess_times = [0 for i in range(bin_num*bin_size + 1)]
 
-    k = 0
+    k = 1
     while k < SIMU_TIMES:
         if k % 10 == 0:
             disp_progress(t1, 0, k, SIMU_TIMES, str(k))
 
-        selected_mini = [0 for jj in range(pool_size + 1)]
-
+        # selected_mini = [0 for jj in range(pool_size + 1)]
+        selected_mini = []
         now_tx = real_tx = real_nfrom = 0
+
         try:
             while now_tx == 0:
                 now_tx, real_tx, real_nfrom = line_txto_txfrom_nfrom(
-                    cur_tx_in_out, random.randint(5, SIZE_DB[thread_id] - 1))
+                    cur_tx_in_out, k * 30 + 1)
 
             real_block, real_mini_id = block_minitxid_via_txid(
                 cur_tx_block, real_tx, real_nfrom)
@@ -117,25 +143,30 @@ def simulate(thread_id, MIX, max_random,  SIMU_TIMES):
                 cur_tx_block, now_tx, 0)
             # print("BLOCK at", now_block)
 
-            real_time_ago = get_time_stamp(
-                now_block, now_mini_id) - get_time_stamp(real_block, real_mini_id)
+            now_time = get_time_stamp(now_block, now_mini_id)
+            real_time = get_time_stamp(real_block, real_mini_id)
+            real_age = now_time - real_time
+
             # print("TH", thread_id, "Random Choose:", now_tx, "from",
             #      real_tx, real_nfrom, "mini_id", real_mini_id, "age:",
             #      real_time_ago)
             # row_prob[0] = 1
 
-            selected_mini[0] = real_time_ago
+            add_candidate(selected_mini,mapped_bin(real_mini_id, bin_size), True)
 
-            for j in range(pool_size):
-                time_ago = 0
-                while time_ago <= 0 or time_ago in selected_mini[0:j + 1]:
-                    time_ago = int(math.exp(random.gammavariate(ALPHA, BETA)))
-                    #print("ready choose", time_ago)
-                    selected_mini[j + 1] = time_ago
+            for j in range(bin_num-1):
+                age = 0
+                while age<2 or not sampled_mini:
+                    sampled_age = random.gammavariate(ALPHA, BETA)
+                    # print("ready choose", time_ago)
+                    sampled_block = time_to_block(now_time-sampled_age)
+                    sampled_mini = minitxid_via_block(DB_TX_BL_PATH,sampled_block)
+                mapped = mapped_bin(sampled_mini, bin_size)
+                add_candidate(selected_mini, mapped, False)
             # print("\tTH", thread_id, "choose_time_ago:", selected_mini)
 
-            selected_mini.sort(reverse=True)
-            guess_time = find_index(selected_mini, real_time_ago, MIX)
+         	
+            guess_time = guess(selected_mini, real_time_ago, bin_num*bin_size)
             guess_times[MIX + 1 - guess_time] += 1
             # print("\tTH", thread_id, "final:", now_tx, "from", real_tx,
             #      real_nfrom, "guess time:", MIX + 1 - guess_time)
@@ -145,14 +176,6 @@ def simulate(thread_id, MIX, max_random,  SIMU_TIMES):
 
     info = "OK: {}".format(str(guess_times))
     return info
-
-'''
-def is_in_array(arr, element, start, end):
-    for i in ranage(start, end + 1):
-        if arr[i] == element:
-            return true
-    return false
-'''
 
 
 def find_index(arr, element, largest):

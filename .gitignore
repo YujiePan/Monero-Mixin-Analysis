@@ -4,3 +4,9 @@
 *.tsv
 *.pyc
 result/age_distri*.txt
+*.m
+result/AGE_ALL1.asv
+result/AGE_ALL1.txt
+result/AGE_ALL2.txt
+result/AGE_ALL3.txt
+result/AGE_ALL4.txt
